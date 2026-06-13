@@ -2017,6 +2017,15 @@ function divideElectoralVotesProp(e, t) {
         e.player_answers.push(Number(t));
         var i = 0,
             a = S(e.election_id);
+
+        // MULTIPLAYER: in an online match, don't advance the turn locally —
+        // report this answer (and any visit just chosen) to the other player
+        // and let MP.submitTurn() advance once both sides have responded.
+        const proceed = () => {
+            if (e.mp_active && window.MP) MP.submitTurn(Number(t));
+            else nextQuestion();
+        };
+
         if (1 == e.answer_feedback_flg) {
             for (var s = 0; s < e.answer_feedback_json.length; s++)
                 if (e.answer_feedback_json[s].fields.answer == t && e.answer_feedback_json[s].fields.candidate == e.candidate_id) {
@@ -2027,13 +2036,13 @@ function divideElectoralVotesProp(e, t) {
                 var n = '                    <div class="overlay" id="visit_overlay"></div>                    <div class="overlay_window" id="visit_window">                        <div class="overlay_window_content" id="visit_content">                        <h3>Advisor Feedback</h3>                        <img src="' + e.election_json[a].fields.advisor_url + '" width="208" height="128"/>                        <p>' + substitutePlaceholders(e.answer_feedback_json[s].fields.answer_feedback) + '</p>                        </div>                        <div class="overlay_buttons" id="visit_buttons">                        <button id="ok_button">OK</button><br><button id="no_feedback_button">Don\'t give me advice</button>                                                </div>                    </div>';
                 $("#game_window").append(n);
                 $("#ok_button").click(function() {
-                    nextQuestion()
+                    proceed()
                 }), $("#no_feedback_button").click(function() {
-                    e.answer_feedback_flg = 0, nextQuestion()
+                    e.answer_feedback_flg = 0, proceed()
                 })
             }
-            0 == i && nextQuestion()
-        } else nextQuestion()
+            0 == i && proceed()
+        } else proceed()
     }
 
     function importgame(code) {
@@ -3492,15 +3501,39 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
             return acc;
           }, []);
 
-          const l = n.reduce((acc, score) => acc + score, 0);
+          let l = n.reduce((acc, score) => acc + score, 0);
+
+          // MULTIPLAYER: incorporate the second human player's answer history
+          // (scored from their candidate's perspective) into every candidate's
+          // global multiplier, exactly the way the host's answers already are.
+          const mpOppId = e.mp_opponent_candidate_id;
+          const isMpGuestCandidate = mpOppId != null && candidate === mpOppId;
+          if (mpOppId != null && Array.isArray(e.player_answers_p2)) {
+            const n2 = e.player_answers_p2.reduce((acc, answer) => {
+              const score = e.answer_score_global_json.find(
+                (item) =>
+                  item.fields.answer === answer &&
+                  item.fields.candidate === mpOppId &&
+                  item.fields.affected_candidate === candidate
+              );
+              if (score) acc.push(score.fields.global_multiplier);
+              return acc;
+            }, []);
+            l += n2.reduce((acc, score) => acc + score, 0);
+          }
+
+          const isHumanPlayer = candidate === e.candidate_id || isMpGuestCandidate;
+
           const o =
-            candidate === e.candidate_id && l < -0.4
+            isHumanPlayer && l < -0.4
               ? 0.6
               : 1 + l;
           const c =
-            candidate === e.candidate_id
+            (candidate === e.candidate_id)
               ? o * (1 + F(candidate) * e.global_parameter_json[0].fields.global_variance) * e.difficulty_level_multiplier
-              : o * (1 + F(candidate) * e.global_parameter_json[0].fields.global_variance);
+              : isMpGuestCandidate
+                ? o * (1 + F(candidate) * e.global_parameter_json[0].fields.global_variance) * (e.mp_guest_difficulty_multiplier ?? 1)
+                : o * (1 + F(candidate) * e.global_parameter_json[0].fields.global_variance);
           const _ = isNaN(c) ? 1 : c;
 
           return {
@@ -3559,9 +3592,19 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
                 var w = 0;
                 for (d = 0; d < e.player_answers.length; d++)
                     for (var j = 0; j < e.answer_score_state_json.length; j++) e.answer_score_state_json[j].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j].fields.answer == e.player_answers[d] && e.answer_score_state_json[j].fields.candidate == e.candidate_id && e.answer_score_state_json[j].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j].fields.state_multiplier);
+                // MULTIPLAYER: same lookup, but for the second human player's answers/candidate
+                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2))
+                    for (d = 0; d < e.player_answers_p2.length; d++)
+                        for (var j2 = 0; j2 < e.answer_score_state_json.length; j2++) e.answer_score_state_json[j2].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j2].fields.answer == e.player_answers_p2[d] && e.answer_score_state_json[j2].fields.candidate == e.mp_opponent_candidate_id && e.answer_score_state_json[j2].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j2].fields.state_multiplier);
                 if (0 == a) {
                     e.running_mate_state_id == f[a].state_multipliers[r].state && (w += .004 * f[a].state_multipliers[r].state_multiplier);
                     for (d = 0; d < e.player_visits.length; d++) e.player_visits[d] == f[a].state_multipliers[r].state && (w += .005 * Math.max(.1, f[a].state_multipliers[r].state_multiplier) * (e.shining_data.visit_multiplier ?? 1))
+                }
+                // MULTIPLAYER: same running-mate-state and visit bonuses, for the second human player's candidate
+                if (e.mp_opponent_candidate_id != null && i[a] == e.mp_opponent_candidate_id) {
+                    e.mp_running_mate_state_id_p2 == f[a].state_multipliers[r].state && (w += .004 * f[a].state_multipliers[r].state_multiplier);
+                    if (Array.isArray(e.player_visits_p2))
+                        for (d = 0; d < e.player_visits_p2.length; d++) e.player_visits_p2[d] == f[a].state_multipliers[r].state && (w += .005 * Math.max(.1, f[a].state_multipliers[r].state_multiplier) * (e.mp_guest_visit_multiplier ?? 1))
                 }
                 f[a].state_multipliers[r].state_multiplier += w
             }
@@ -3792,6 +3835,12 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
     $("#game_start").click(gameStart), $("#skip_to_final").click(function(t) {
         e.final_state_results = A(1), electionNight()
     })
+
+    // MULTIPLAYER: expose the internals multiplayer.js needs to drive a
+    // second human-controlled candidate and keep two clients in sync.
+    campaignTrail_temp.MP_internal = {
+        A, n, nextQuestion, o, electionNight, election_HTML, findFromPK, S, E
+    };
 }();
 
 // what did you expect?
