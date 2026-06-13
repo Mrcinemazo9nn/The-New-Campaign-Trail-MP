@@ -50,10 +50,10 @@
     //    See MULTIPLAYER_SETUP.md for step-by-step instructions.
     // -----------------------------------------------------------------
     const FIREBASE_CONFIG = {
-        apiKey: "AIzaSyDakwoONMVcFJxYtPPxpM8ZNxx4YytSjxw",
-        authDomain: "the-campaign-trail-multiplayer.firebaseapp.com",
-        databaseURL: "https://the-campaign-trail-multiplayer-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "the-campaign-trail-multiplayer",
+        apiKey: "AIzaSyC2Azv3yLWj3qn1vkrDNzi0PrFpReGeX7M",
+        authDomain: "the-new-campaign-trail-m-eb947.firebaseapp.com",
+        databaseURL: "https://the-new-campaign-trail-m-eb947-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "the-new-campaign-trail-m-eb947",
     };
 
     const MAX_TIME_LIMIT_SECONDS = 60 * 60; // hard cap: 1 hour
