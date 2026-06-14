@@ -908,6 +908,21 @@ function exportResults() {
 
 diff_mod = false
 
+// MULTIPLAYER: for these elections, the "cross-effect" data (where one
+// candidate's answer choices also shift the OTHER candidate's global/state
+// multipliers) is asymmetric in a way that gives one side an unconditional,
+// guaranteed advantage once both candidates are human-controlled — e.g. in
+// 1948 Truman's own answers can nearly double his multiplier via a large
+// cross-bonus that Dewey's answers never reciprocate, and in 1960 Nixon's
+// answers always hand Kennedy a fixed state-multiplier bonus with no
+// equivalent in the other direction. For these election pks, multiplayer
+// falls back to single-player-style scoring (each candidate's multipliers
+// are driven only by their OWN answers), which keeps both human players on
+// comparable footing.
+//   12 = 1948 (Dewey/Truman), 11 = 1960 (Nixon/Kennedy),
+//   10 = 1976 (Carter/Ford), 15 = 1988 (Dukakis/Bush), 20 = 2016 (Clinton/Trump)
+var MP_NO_CROSS_ELECTIONS = [12, 11, 10, 15, 20];
+
 var F = () => {
     var e, t, i;
     do {
@@ -3508,7 +3523,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
           // global multiplier, exactly the way the host's answers already are.
           const mpOppId = e.mp_opponent_candidate_id;
           const isMpGuestCandidate = mpOppId != null && candidate === mpOppId;
-          if (mpOppId != null && Array.isArray(e.player_answers_p2)) {
+          if (mpOppId != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1) {
             const n2 = e.player_answers_p2.reduce((acc, answer) => {
               const score = e.answer_score_global_json.find(
                 (item) =>
@@ -3593,7 +3608,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
                 for (d = 0; d < e.player_answers.length; d++)
                     for (var j = 0; j < e.answer_score_state_json.length; j++) e.answer_score_state_json[j].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j].fields.answer == e.player_answers[d] && e.answer_score_state_json[j].fields.candidate == e.candidate_id && e.answer_score_state_json[j].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j].fields.state_multiplier);
                 // MULTIPLAYER: same lookup, but for the second human player's answers/candidate
-                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2))
+                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1)
                     for (d = 0; d < e.player_answers_p2.length; d++)
                         for (var j2 = 0; j2 < e.answer_score_state_json.length; j2++) e.answer_score_state_json[j2].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j2].fields.answer == e.player_answers_p2[d] && e.answer_score_state_json[j2].fields.candidate == e.mp_opponent_candidate_id && e.answer_score_state_json[j2].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j2].fields.state_multiplier);
                 if (0 == a) {
