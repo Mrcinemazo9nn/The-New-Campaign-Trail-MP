@@ -345,6 +345,13 @@
                     MP.roomRef.child("config/guestJoined").off();
                     initMultiplayerState(config, "host");
                     closeModal();
+
+                    // Merge in the guest's candidate's scoring tables so the
+                    // host's final A(1) calculation (which is shared with the
+                    // guest as the official result) can score the guest's
+                    // answer choices too, not just the host's own.
+                    const guestRunningMateId = firstRunningMateFor(config.guestCandidateId);
+                    mergeOpponentScoringTables(config, config.guestCandidateId, guestRunningMateId, () => {});
                 }
             });
         }).catch(err => {
@@ -433,55 +440,121 @@
                 return;
             }
 
-            const filename = internals.election_HTML(config.electionId, config.hostCandidateId, config.hostRunningMateId);
+            // IMPORTANT: load the GUEST's own candidate's questionset file —
+            // NOT the host's. Each candidate's file contains that candidate's
+            // own question text and answer options (written from their
+            // perspective), so the guest must load their own file to see the
+            // correct questions/answers rather than the host's.
+            const guestCandidateId = config.guestCandidateId;
+            const guestRunningMateId = firstRunningMateFor(guestCandidateId);
+
+            const filename = internals.election_HTML(config.electionId, guestCandidateId, guestRunningMateId);
             const url = "../static/questionset/" + filename;
 
             $("#game_window").load(url, () => {
                 const e2 = campaignTrail_temp;
 
                 // Replicate the base setup that s()'s continue handler normally does.
+                // Note: candidate_last_name, running_mate_last_name,
+                // candidate_image_url, running_mate_image_url,
+                // running_mate_state_id, questions_json, answers_json,
+                // answer_score_global_json, answer_score_state_json, etc.
+                // all came from the file we just loaded and are already
+                // correct for the guest's candidate — no need to re-derive them.
                 e2.question_number = 0;
                 e2.election_id = config.electionId;
                 e2.difficulty_level_id = config.difficultyLevelId;
                 e2.difficulty_level_multiplier = config.difficultyMultiplier;
                 e2.game_type_id = config.gameTypeId;
-                e2.player_answers = [];
-                e2.player_visits = [];
+                if (!Array.isArray(e2.player_answers)) e2.player_answers = [];
+                if (!Array.isArray(e2.player_visits)) e2.player_visits = [];
 
-                // Capture the host's running-mate home state before we overwrite it.
-                const hostRunningMateStateId = e2.running_mate_state_id;
-
-                // Re-point everything at the guest's assigned candidate.
-                const guestCandidateId = config.guestCandidateId;
-                const guestRec = getCandidateRecord(guestCandidateId);
-                const guestRunningMateId = firstRunningMateFor(guestCandidateId);
-                const guestRunningMateRec = guestRunningMateId != null ? getCandidateRecord(guestRunningMateId) : null;
-
+                // candidate_id / running_mate_id / opponents_list aren't set by
+                // the questionset file itself, so set them explicitly.
                 e2.candidate_id = guestCandidateId;
                 e2.running_mate_id = guestRunningMateId;
-                e2.candidate_last_name = guestRec ? guestRec.fields.last_name : e2.candidate_last_name;
-                e2.running_mate_last_name = guestRunningMateRec ? guestRunningMateRec.fields.last_name : e2.running_mate_last_name;
-                if (guestRec && guestRec.fields.image_url) e2.candidate_image_url = guestRec.fields.image_url;
-                if (guestRunningMateRec && guestRunningMateRec.fields.image_url) e2.running_mate_image_url = guestRunningMateRec.fields.image_url;
-                e2.running_mate_state_id = runningMateStateIdFor(guestCandidateId);
-
                 e2.opponents_list = computeOpponentsList(config.electionId, guestCandidateId);
 
                 // Multiplayer bookkeeping
                 e2.mp_opponent_candidate_id = config.hostCandidateId;
-                e2.mp_running_mate_state_id_p2 = hostRunningMateStateId;
+                e2.mp_running_mate_state_id_p2 = runningMateStateIdFor(config.hostCandidateId);
                 e2.mp_guest_difficulty_multiplier = config.difficultyMultiplier;
                 e2.player_answers_p2 = [];
                 e2.player_visits_p2 = [];
 
                 initMultiplayerState(config, "guest");
 
-                // Render question 0 for the guest's candidate.
-                const internals2 = getInternals();
-                internals2.o(internals2.A(2));
+                // Merge in the host's scoring tables (each candidate's file
+                // only fully covers their own answer choices) so cross-candidate
+                // scoring is as complete as possible, then render question 1.
+                const hostRunningMateId = config.hostRunningMateId;
+                mergeOpponentScoringTables(config, config.hostCandidateId, hostRunningMateId, () => {
+                    const internals2 = getInternals();
+                    internals2.o(internals2.A(2));
+                });
             });
         }, 200);
     }
+
+    // Loads `otherCandidateId`'s questionset file in the background and merges
+    // its answer_score_global_json / answer_score_state_json entries into our
+    // own, so that scoring lookups for the OTHER player's answers (which use
+    // answer pks from their file) find a match. Restores everything else
+    // (our own questions_json, answers_json, candidate names/images, etc.)
+    // back to what they were before the temporary load.
+    function mergeOpponentScoringTables(config, otherCandidateId, otherRunningMateId, callback) {
+        const e = campaignTrail_temp;
+        const internals = getInternals();
+
+        if (!otherCandidateId) { callback(); return; }
+
+        const filename = internals.election_HTML(config.electionId, otherCandidateId, otherRunningMateId);
+        const url = "../static/questionset/" + filename;
+
+        const myASG = e.answer_score_global_json || [];
+        const myASS = e.answer_score_state_json || [];
+
+        // Snapshot our current scenario data so the temporary load doesn't
+        // permanently overwrite it.
+        const snapshot = {};
+        for (const key in e) snapshot[key] = e[key];
+
+        const scratch = $('<div style="display:none;"></div>').appendTo("body");
+        scratch.load(url, () => {
+            const otherASG = campaignTrail_temp.answer_score_global_json || [];
+            const otherASS = campaignTrail_temp.answer_score_state_json || [];
+
+            // Restore our own scenario data...
+            for (const key in snapshot) campaignTrail_temp[key] = snapshot[key];
+
+            // ...then merge in the opponent's scoring entries (skipping exact
+            // duplicates so we don't double-count any shared entries).
+            campaignTrail_temp.answer_score_global_json = mergeByKey(myASG, otherASG,
+                item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.affected_candidate}`);
+            campaignTrail_temp.answer_score_state_json = mergeByKey(myASS, otherASS,
+                item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.state}-${item.fields.affected_candidate}`);
+
+            scratch.remove();
+            callback();
+        }).fail(() => {
+            scratch.remove();
+            callback();
+        });
+    }
+
+    function mergeByKey(arrA, arrB, keyFn) {
+        const seen = new Set(arrA.map(keyFn));
+        const merged = arrA.slice();
+        for (const item of arrB) {
+            const k = keyFn(item);
+            if (!seen.has(k)) {
+                seen.add(k);
+                merged.push(item);
+            }
+        }
+        return merged;
+    }
+
 
     // -----------------------------------------------------------------
     // 6. SHARED MULTIPLAYER STATE INIT
