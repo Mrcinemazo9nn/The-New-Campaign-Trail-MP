@@ -913,15 +913,18 @@ diff_mod = false
 // multipliers) is asymmetric in a way that gives one side an unconditional,
 // guaranteed advantage once both candidates are human-controlled — e.g. in
 // 1948 Truman's own answers can nearly double his multiplier via a large
-// cross-bonus that Dewey's answers never reciprocate, and in 1960 Nixon's
+// cross-bonus that Dewey's answers never reciprocate, in 1960 Nixon's
 // answers always hand Kennedy a fixed state-multiplier bonus with no
-// equivalent in the other direction. For these election pks, multiplayer
-// falls back to single-player-style scoring (each candidate's multipliers
-// are driven only by their OWN answers), which keeps both human players on
-// comparable footing.
+// equivalent in the other direction, and in 1968 Humphrey's already-large
+// self-bonus ceiling is further padded by a positive cross-bonus while
+// Nixon's is further reduced by a negative one. For these election pks,
+// multiplayer falls back to single-player-style scoring (each candidate's
+// multipliers are driven only by their OWN answers), which keeps both human
+// players on comparable footing.
 //   12 = 1948 (Dewey/Truman), 11 = 1960 (Nixon/Kennedy),
-//   10 = 1976 (Carter/Ford), 15 = 1988 (Dukakis/Bush), 20 = 2016 (Clinton/Trump)
-var MP_NO_CROSS_ELECTIONS = [12, 11, 10, 15, 20];
+//   10 = 1976 (Carter/Ford), 15 = 1988 (Dukakis/Bush), 20 = 2016 (Clinton/Trump),
+//    4 = 1968 (Nixon/Humphrey)
+var MP_NO_CROSS_ELECTIONS = [12, 11, 10, 15, 20, 4];
 
 var F = () => {
     var e, t, i;
