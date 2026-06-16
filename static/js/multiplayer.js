@@ -50,11 +50,13 @@
     //    See MULTIPLAYER_SETUP.md for step-by-step instructions.
     // -----------------------------------------------------------------
     const FIREBASE_CONFIG = {
-        apiKey: "AIzaSyC2Azv3yLWj3qn1vkrDNzi0PrFpReGeX7M",
-        authDomain: "the-new-campaign-trail-m-eb947.firebaseapp.com",
-        databaseURL: "https://the-new-campaign-trail-m-eb947-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "the-new-campaign-trail-m-eb947",
+        apiKey: "AIzaSyBUUJX31beqyfXgayHDCOxDONepGInA_ok",
+        authDomain: "the-new-campaign-trail-m-15866.firebaseapp.com",
+        databaseURL: "https://the-new-campaign-trail-m-15866-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "the-new-campaign-trail-m-15866",
     };
+
+    const RECAPTCHA_SITE_KEY = "6LdyjSEtAAAAAG_RLfEm2NcKAwPgbYdFQMePh7B1";
 
     const MAX_TIME_LIMIT_SECONDS = 60 * 60; // hard cap: 1 hour
     const DEFAULT_TIME_LIMIT_SECONDS = 5 * 60; // 5 minutes per turn
@@ -76,6 +78,15 @@
         try {
             if (!firebase.apps || !firebase.apps.length) {
                 firebase.initializeApp(FIREBASE_CONFIG);
+            }
+            // Initialize App Check with reCAPTCHA v3 to restrict database
+            // access to requests coming from this site only.
+            if (typeof firebase.appCheck === "function") {
+                const appCheck = firebase.appCheck();
+                appCheck.activate(
+                    new firebase.appCheck.ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+                    true // auto-refresh tokens
+                );
             }
             db = firebase.database();
             firebaseReady = true;
