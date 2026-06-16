@@ -81,12 +81,15 @@
             }
             // Initialize App Check with reCAPTCHA v3 to restrict database
             // access to requests coming from this site only.
-            if (typeof firebase.appCheck === "function") {
-                const appCheck = firebase.appCheck();
-                appCheck.activate(
-                    new firebase.appCheck.ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
-                    true // auto-refresh tokens
-                );
+            // Uses the compat SDK pattern (firebase.appCheck is a namespace, not a function).
+            try {
+                if (firebase.appCheck) {
+                    firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true);
+                }
+            } catch (appCheckErr) {
+                // App Check failure is non-fatal — log it but keep going.
+                // The database will still work; enforcement just won't be active.
+                console.warn("[MP] App Check activation failed (non-fatal):", appCheckErr);
             }
             db = firebase.database();
             firebaseReady = true;
@@ -314,11 +317,16 @@
     }
 
     function createRoomAsHost(guestCandidateId, timeLimitSeconds, overlay) {
+        console.log("[MP] createRoomAsHost called", {guestCandidateId, timeLimitSeconds});
+        overlay.find("#mp_room_info").html(`<p><i>Connecting to Firebase...</i></p>`);
+
         if (!initFirebase()) {
             overlay.find("#mp_room_info").html(`<p style="color:red;">Multiplayer isn't configured yet.
                 The site owner needs to add a Firebase config — see MULTIPLAYER_SETUP.md.</p>`);
+            console.error("[MP] initFirebase() returned false");
             return;
         }
+        console.log("[MP] Firebase ready, creating room...");
 
         const e = campaignTrail_temp;
         const difficultyEntry = (e.difficulty_level_json || []).find(d => String(d.pk) === String(e.difficulty_level_id));
