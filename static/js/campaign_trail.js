@@ -917,14 +917,22 @@ diff_mod = false
 // answers always hand Kennedy a fixed state-multiplier bonus with no
 // equivalent in the other direction, and in 1968 Humphrey's already-large
 // self-bonus ceiling is further padded by a positive cross-bonus while
-// Nixon's is further reduced by a negative one. For these election pks,
-// multiplayer falls back to single-player-style scoring (each candidate's
-// multipliers are driven only by their OWN answers), which keeps both human
-// players on comparable footing.
+// Nixon's is further reduced by a negative one. 1860 has a different
+// problem: Douglas's "fusion ticket" answer (question 582) applies a -50
+// ballot-removal penalty to Breckinridge/Bell in NY/NJ/PA, which in
+// single-player triggers a SCRIPTED REACTION QUESTION for the Lincoln AI
+// (question 608) that applies a matching counter-penalty. That reaction
+// question is part of the AI's hardcoded branch and never appears for a
+// human-controlled Lincoln, so in multiplayer Douglas's fusion bonus fires
+// but Lincoln's intended counter-response never does — a one-sided,
+// unfixable-at-the-data-level asymmetry. For these election pks, multiplayer
+// falls back to single-player-style scoring (each candidate's multipliers
+// are driven only by their OWN answers), which keeps both human players on
+// comparable footing.
 //   12 = 1948 (Dewey/Truman), 11 = 1960 (Nixon/Kennedy),
 //   10 = 1976 (Carter/Ford), 15 = 1988 (Dukakis/Bush), 20 = 2016 (Clinton/Trump),
-//    4 = 1968 (Nixon/Humphrey)
-var MP_NO_CROSS_ELECTIONS = [12, 11, 10, 15, 20, 4];
+//    4 = 1968 (Nixon/Humphrey), 8 = 1860 (Lincoln/Douglas, fusion ticket event)
+var MP_NO_CROSS_ELECTIONS = [12, 11, 10, 15, 20, 4, 8];
 
 var F = () => {
     var e, t, i;
