@@ -79,18 +79,6 @@
             if (!firebase.apps || !firebase.apps.length) {
                 firebase.initializeApp(FIREBASE_CONFIG);
             }
-            // Initialize App Check with reCAPTCHA v3 to restrict database
-            // access to requests coming from this site only.
-            // Uses the compat SDK pattern (firebase.appCheck is a namespace, not a function).
-            try {
-                if (firebase.appCheck) {
-                    firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true);
-                }
-            } catch (appCheckErr) {
-                // App Check failure is non-fatal — log it but keep going.
-                // The database will still work; enforcement just won't be active.
-                console.warn("[MP] App Check activation failed (non-fatal):", appCheckErr);
-            }
             db = firebase.database();
             firebaseReady = true;
             return true;
@@ -265,6 +253,22 @@
         }, 400);
     }
 
+    function runningMatesFor(candidateId) {
+        const e = campaignTrail_temp;
+        return (e.running_mate_json || [])
+            .filter(f => f.fields.candidate === Number(candidateId))
+            .map(f => f.fields.running_mate);
+    }
+
+    function runningMateOptionsHtml(candidateId) {
+        const mates = runningMatesFor(candidateId);
+        return mates.map(pk => {
+            const rec = getCandidateRecord(pk);
+            const name = rec ? `${rec.fields.first_name} ${rec.fields.last_name}` : `Running Mate ${pk}`;
+            return `<option value="${pk}">${name}</option>`;
+        }).join("");
+    }
+
     function openHostSetupPanel() {
         const e = campaignTrail_temp;
 
@@ -287,12 +291,18 @@
             })
             .join("");
 
+        const firstOpponentId = e.opponents_list[0];
+
         const overlay = modalShell(`
             <h3>Host a Game — Step 2</h3>
             <p>Your candidate: <b>${e.candidate_last_name}</b></p>
             <p>
                 <label for="mp_opp_select">Which candidate will your opponent play?</label><br>
                 <select id="mp_opp_select" style="width:100%;margin-top:0.3em;">${opponentOptions}</select>
+            </p>
+            <p>
+                <label for="mp_opp_rm_select">Choose their running mate:</label><br>
+                <select id="mp_opp_rm_select" style="width:100%;margin-top:0.3em;">${runningMateOptionsHtml(firstOpponentId)}</select>
             </p>
             <p>
                 <label for="mp_time_limit">Time limit per turn (minutes, max 60):</label><br>
@@ -305,19 +315,26 @@
             <div id="mp_room_info"></div>
         `);
 
+        // Repopulate running-mate options whenever the opponent candidate changes.
+        overlay.find("#mp_opp_select").on("change", function () {
+            const selectedId = Number($(this).val());
+            overlay.find("#mp_opp_rm_select").html(runningMateOptionsHtml(selectedId));
+        });
+
         overlay.find("#mp_setup_cancel_btn").click(closeModal);
         overlay.find("#mp_create_room_btn").click(() => {
             const guestCandidateId = Number($("#mp_opp_select").val());
+            const guestRunningMateId = Number($("#mp_opp_rm_select").val());
             let minutes = Number($("#mp_time_limit").val());
             if (isNaN(minutes) || minutes < 1) minutes = 1;
             if (minutes > 60) minutes = 60;
             const timeLimitSeconds = Math.min(MAX_TIME_LIMIT_SECONDS, Math.max(MIN_TIME_LIMIT_SECONDS, Math.round(minutes * 60)));
-            createRoomAsHost(guestCandidateId, timeLimitSeconds, overlay);
+            createRoomAsHost(guestCandidateId, guestRunningMateId, timeLimitSeconds, overlay);
         });
     }
 
-    function createRoomAsHost(guestCandidateId, timeLimitSeconds, overlay) {
-        console.log("[MP] createRoomAsHost called", {guestCandidateId, timeLimitSeconds});
+    function createRoomAsHost(guestCandidateId, guestRunningMateId, timeLimitSeconds, overlay) {
+        console.log("[MP] createRoomAsHost called", {guestCandidateId, guestRunningMateId, timeLimitSeconds});
         overlay.find("#mp_room_info").html(`<p><i>Connecting to Firebase...</i></p>`);
 
         if (!initFirebase()) {
@@ -338,6 +355,7 @@
             hostCandidateId: Number(e.candidate_id),
             hostRunningMateId: Number(e.running_mate_id),
             guestCandidateId: guestCandidateId,
+            guestRunningMateId: guestRunningMateId,
             gameTypeId: String(e.game_type_id),
             difficultyLevelId: Number(e.difficulty_level_id),
             difficultyMultiplier: difficultyMultiplier,
@@ -369,8 +387,7 @@
                     // host's final A(1) calculation (which is shared with the
                     // guest as the official result) can score the guest's
                     // answer choices too, not just the host's own.
-                    const guestRunningMateId = firstRunningMateFor(config.guestCandidateId);
-                    mergeOpponentScoringTables(config, config.guestCandidateId, guestRunningMateId, () => {});
+                    mergeOpponentScoringTables(config, config.guestCandidateId, config.guestRunningMateId, () => {});
                 }
             });
         }).catch(err => {
@@ -465,7 +482,12 @@
             // perspective), so the guest must load their own file to see the
             // correct questions/answers rather than the host's.
             const guestCandidateId = config.guestCandidateId;
-            const guestRunningMateId = firstRunningMateFor(guestCandidateId);
+            // The host chose the guest's running mate during room setup. Fall
+            // back to the first available running mate only if, for some
+            // reason, an older/incompatible room config didn't include one.
+            const guestRunningMateId = config.guestRunningMateId != null
+                ? config.guestRunningMateId
+                : firstRunningMateFor(guestCandidateId);
 
             const filename = internals.election_HTML(config.electionId, guestCandidateId, guestRunningMateId);
             const url = "../static/questionset/" + filename;
