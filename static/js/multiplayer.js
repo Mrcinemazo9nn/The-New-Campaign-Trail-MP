@@ -245,7 +245,8 @@
             }
             const e = campaignTrail_temp;
             if (e.candidate_id && e.election_id && e.opponents_list && e.opponents_list.length &&
-                e.question_number === 0 && $("#answer_select_button")[0]) {
+                e.question_number === 0 && $("#answer_select_button")[0] &&
+                e.running_mate_json && e.running_mate_json.length) {
                 clearInterval(interval);
                 MP.pendingHostSetup = false;
                 openHostSetupPanel();
@@ -262,6 +263,13 @@
 
     function runningMateOptionsHtml(candidateId) {
         const mates = runningMatesFor(candidateId);
+        if (!mates.length) {
+            // Shouldn't normally happen (every base-game candidate has at
+            // least one running mate option) — but if data is missing for
+            // any reason, show a clear placeholder instead of an empty,
+            // unusable dropdown.
+            return `<option value="">(no running mate data found)</option>`;
+        }
         return mates.map(pk => {
             const rec = getCandidateRecord(pk);
             const name = rec ? `${rec.fields.first_name} ${rec.fields.last_name}` : `Running Mate ${pk}`;
@@ -324,7 +332,14 @@
         overlay.find("#mp_setup_cancel_btn").click(closeModal);
         overlay.find("#mp_create_room_btn").click(() => {
             const guestCandidateId = Number($("#mp_opp_select").val());
-            const guestRunningMateId = Number($("#mp_opp_rm_select").val());
+            const rmVal = $("#mp_opp_rm_select").val();
+            if (!rmVal) {
+                overlay.find("#mp_room_info").html(`<p style="color:red;">No running mate data is
+                    available for that candidate, so a room can't be created. Try a different
+                    opponent candidate, or reload and try again.</p>`);
+                return;
+            }
+            const guestRunningMateId = Number(rmVal);
             let minutes = Number($("#mp_time_limit").val());
             if (isNaN(minutes) || minutes < 1) minutes = 1;
             if (minutes > 60) minutes = 60;
