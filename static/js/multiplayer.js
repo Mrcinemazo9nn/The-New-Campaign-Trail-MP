@@ -225,27 +225,24 @@
         MP.pendingHostSetup = true;
         modalShell(`
             <h3>Host a Game — Step 1</h3>
-            <p>First, set up your game the normal way: click <b>"Click here to begin!"</b> below
-               and choose your election year, candidate, running mate, game mode, and difficulty.</p>
+            <p>First, set up your game the normal way: click <b>"Click here to begin!"</b> on the
+               main screen and choose your election year, candidate, running mate, game mode, and difficulty.</p>
             <p><i>Once your first question loads, a multiplayer setup panel will appear automatically
                so you can invite your opponent.</i></p>
-            <p>
-                <button id="mp_begin_btn">Click here to begin!</button>
-                <button id="mp_back_btn">Back</button>
-            </p>
+            <p><button id="mp_back_btn">Back</button>&nbsp;&nbsp;<button id="mp_ready_btn">OK, got it!</button></p>
         `);
         // "Back" cancels the host flow entirely.
         $("#mp_back_btn").click(() => {
             MP.pendingHostSetup = false;
             closeModal();
         });
-        // "Click here to begin!" closes this modal and triggers the normal
-        // game-start button underneath, so the player can pick their year/candidate.
-        $("#mp_begin_btn").click(() => {
+        // "OK, got it!" just closes this instructions modal — the player
+        // then clicks "Click here to begin!" on the main screen themselves.
+        // Only start watching for the game to load AFTER they dismiss this.
+        $("#mp_ready_btn").click(() => {
             closeModal();
-            $("#game_start").click();
+            watchForHostSetupComplete();
         });
-        watchForHostSetupComplete();
     }
 
     function watchForHostSetupComplete() {
