@@ -245,6 +245,13 @@
                 return;
             }
             const e = campaignTrail_temp;
+            const internals = getInternals();
+            const isModded = internals.getModded && internals.getModded();
+
+            // For mods, wait until the mod init file has been evaluated and
+            // opponents_default_json is populated (it's set by the init file).
+            if (isModded && !(e.opponents_default_json && e.opponents_default_json.length)) return;
+
             if (e.candidate_id && e.election_id && e.opponents_list && e.opponents_list.length &&
                 e.question_number === 0 && $("#answer_select_button")[0] &&
                 e.running_mate_json && e.running_mate_json.length) {
@@ -365,6 +372,10 @@
         const difficultyEntry = (e.difficulty_level_json || []).find(d => String(d.pk) === String(e.difficulty_level_id));
         const difficultyMultiplier = difficultyEntry ? difficultyEntry.fields.multiplier : (e.difficulty_level_multiplier || 1);
 
+        const internals = getInternals();
+        const isModded = internals.getModded ? internals.getModded() : false;
+        const theorId = internals.getTheorId ? internals.getTheorId() : null;
+
         const roomId = makeRoomCode();
         const config = {
             electionId: Number(e.election_id),
@@ -376,6 +387,8 @@
             difficultyLevelId: Number(e.difficulty_level_id),
             difficultyMultiplier: difficultyMultiplier,
             timeLimitSeconds: timeLimitSeconds,
+            isModded: isModded,
+            theorId: theorId,
             createdAt: Date.now(),
             guestJoined: false,
         };
@@ -511,13 +524,6 @@
             $("#game_window").load(url, () => {
                 const e2 = campaignTrail_temp;
 
-                // Replicate the base setup that s()'s continue handler normally does.
-                // Note: candidate_last_name, running_mate_last_name,
-                // candidate_image_url, running_mate_image_url,
-                // running_mate_state_id, questions_json, answers_json,
-                // answer_score_global_json, answer_score_state_json, etc.
-                // all came from the file we just loaded and are already
-                // correct for the guest's candidate — no need to re-derive them.
                 e2.question_number = 0;
                 e2.election_id = config.electionId;
                 e2.difficulty_level_id = config.difficultyLevelId;
@@ -526,29 +532,66 @@
                 if (!Array.isArray(e2.player_answers)) e2.player_answers = [];
                 if (!Array.isArray(e2.player_visits)) e2.player_visits = [];
 
-                // candidate_id / running_mate_id / opponents_list aren't set by
-                // the questionset file itself, so set them explicitly.
                 e2.candidate_id = guestCandidateId;
                 e2.running_mate_id = guestRunningMateId;
                 e2.opponents_list = computeOpponentsList(config.electionId, guestCandidateId);
 
-                // Multiplayer bookkeeping
                 e2.mp_opponent_candidate_id = config.hostCandidateId;
                 e2.mp_running_mate_state_id_p2 = runningMateStateIdFor(config.hostCandidateId);
                 e2.mp_guest_difficulty_multiplier = config.difficultyMultiplier;
                 e2.player_answers_p2 = [];
                 e2.player_visits_p2 = [];
 
-                initMultiplayerState(config, "guest");
+                const finishSetup = () => {
+                    initMultiplayerState(config, "guest");
+                    mergeOpponentScoringTables(config, config.hostCandidateId, config.hostRunningMateId, () => {
+                        const internals2 = getInternals();
+                        internals2.o(internals2.A(2));
+                    });
+                };
 
-                // Merge in the host's scoring tables (each candidate's file
-                // only fully covers their own answer choices) so cross-candidate
-                // scoring is as complete as possible, then render question 1.
-                const hostRunningMateId = config.hostRunningMateId;
-                mergeOpponentScoringTables(config, config.hostCandidateId, hostRunningMateId, () => {
-                    const internals2 = getInternals();
-                    internals2.o(internals2.A(2));
-                });
+                if (config.isModded && config.theorId) {
+                    // Mods store their full scenario data (candidate_json,
+                    // running_mate_json, opponents_default_json, scoring tables,
+                    // etc.) in a separate init file under static/mods/. The
+                    // guest needs to evaluate the same init file the host did
+                    // so that all of the mod's data is in memory.
+                    // We construct a guest-specific theorId by swapping in the
+                    // guest candidate/VP names in place of the host's.
+                    const guestRec = getCandidateRecord(guestCandidateId);
+                    const guestRmRec = getCandidateRecord(guestRunningMateId);
+                    const guestCandName = guestRec ? guestRec.fields.last_name : "";
+                    const guestRmName = guestRmRec ? guestRmRec.fields.last_name : "";
+                    // The theorId prefix is the year/code2_id portion — extract
+                    // it from the host's theorId by stripping the candidate names.
+                    const hostRec = getCandidateRecord(config.hostCandidateId);
+                    const hostRmRec = getCandidateRecord(config.hostRunningMateId);
+                    const hostSuffix = (hostRec ? hostRec.fields.last_name : "") +
+                                       (hostRmRec ? hostRmRec.fields.last_name : "");
+                    const prefix = config.theorId.endsWith(hostSuffix)
+                        ? config.theorId.slice(0, config.theorId.length - hostSuffix.length)
+                        : config.theorId.split("_").slice(0, -1).join("_") + "_";
+                    const guestTheorId = prefix + guestCandName + guestRmName;
+
+                    const client = new XMLHttpRequest();
+                    client.open("GET", "../static/mods/" + guestTheorId + ".html");
+                    client.onreadystatechange = function () {
+                        if (client.readyState === 4) {
+                            try { window.evaluate ? evaluate(client.responseText) : eval(client.responseText); } catch (ex) {
+                                console.warn("[MP] Mod init eval error:", ex);
+                            }
+                            // Re-point at guest candidate after mod init (which
+                            // may have reset candidate_id to the host's candidate).
+                            e2.candidate_id = guestCandidateId;
+                            e2.running_mate_id = guestRunningMateId;
+                            e2.opponents_list = computeOpponentsList(config.electionId, guestCandidateId);
+                            finishSetup();
+                        }
+                    };
+                    client.send();
+                } else {
+                    finishSetup();
+                }
             });
         }, 200);
     }
