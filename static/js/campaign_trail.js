@@ -3865,7 +3865,9 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
     // MULTIPLAYER: expose the internals multiplayer.js needs to drive a
     // second human-controlled candidate and keep two clients in sync.
     campaignTrail_temp.MP_internal = {
-        A, n, nextQuestion, o, electionNight, election_HTML, findFromPK, S, E
+        A, n, nextQuestion, o, electionNight, election_HTML, findFromPK, S, E,
+        getModded: () => (typeof modded !== "undefined" ? modded : false),
+        getTheorId: () => (typeof theorId !== "undefined" ? theorId : null),
     };
 }();
 
