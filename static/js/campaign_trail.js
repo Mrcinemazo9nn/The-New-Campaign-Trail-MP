@@ -3534,7 +3534,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
           // global multiplier, exactly the way the host's answers already are.
           const mpOppId = e.mp_opponent_candidate_id;
           const isMpGuestCandidate = mpOppId != null && candidate === mpOppId;
-          if (mpOppId != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1) {
+          if (mpOppId != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1 && !diff_mod) {
             const n2 = e.player_answers_p2.reduce((acc, answer) => {
               const score = e.answer_score_global_json.find(
                 (item) =>
@@ -3619,7 +3619,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
                 for (d = 0; d < e.player_answers.length; d++)
                     for (var j = 0; j < e.answer_score_state_json.length; j++) e.answer_score_state_json[j].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j].fields.answer == e.player_answers[d] && e.answer_score_state_json[j].fields.candidate == e.candidate_id && e.answer_score_state_json[j].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j].fields.state_multiplier);
                 // MULTIPLAYER: same lookup, but for the second human player's answers/candidate
-                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1)
+                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1 && !diff_mod)
                     for (d = 0; d < e.player_answers_p2.length; d++)
                         for (var j2 = 0; j2 < e.answer_score_state_json.length; j2++) e.answer_score_state_json[j2].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j2].fields.answer == e.player_answers_p2[d] && e.answer_score_state_json[j2].fields.candidate == e.mp_opponent_candidate_id && e.answer_score_state_json[j2].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j2].fields.state_multiplier);
                 if (0 == a) {
