@@ -5,7 +5,7 @@
     <title>The New Campaign Trail</title>
     <link rel="stylesheet" href="../static/css/main.css" type="text/css" media="screen" />
     <link rel="stylesheet" href="../static/css/bigshot.css" type="text/css" media="screen" />
-    <link rel="stylesheet" href="../static/css/mod_loader.css" type="text/css" media="screen" />
+    <link rel="stylesheet" href="../static/css/mod_select.css" type="text/css" media="screen" />
 
     <link id="dynamic-favicon" rel="shortcut icon" href="../static/34starcircle-2.png" type="image/png" />
     <link rel="canonical" href="index.html" />
@@ -19,9 +19,10 @@
     <meta property="og:url" content="index.html" />
     <meta property="og:description" content="Can you win a Presidential election? Step into the shoes of a battery of candidates across real and alternate timelines and find out." />
     <meta property="og:site_name" content="The New Campaign Trail" />
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"></script>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css">
+    <!-- jQuery: use locally bundled copy to avoid CDN blocks -->
+    <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/jquery-ui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/themes/base/jquery-ui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://malsup.github.io/jquery.blockUI.js" type="text/javascript"></script>
   </head>
   <body class="base">
@@ -44,7 +45,7 @@
                   <li>You will answer questions about your platform and positions, and also about your campaign strategy.</li>
                   <li>The answers will affect your popularity for better or worse, both nationally and in individual states.</li>
                   <li>Walk the fine line between appealing to your base and winning a majority of the votes.</li>
-                  <li>To load a mod, click the mod loader, select a mod from the drop down menu, click submit, and then press "Click Here to Begin!".</li>
+                  <li>To load a mod, scroll down to browse mods, click <b>▶ Play</b> on any mod card, then click <b>"Click here to begin!"</b> above.</li>
                 </ul>
                 <span class="campaign_trail_start_emphasis">
                   <button id="game_start">
@@ -54,13 +55,12 @@
                 <span style="font-weight: bolder;position:absolute;right:10px;top:10px;">
                   <a href="https://blog.newcampaigntrail.com" target="_blank">Blog</a>
                   <a href="http://modmaker.newcampaigntrail.com/" target="_blank">Modmaker</a>
-                  </li>
+                </span>
               </div>
             </div>
             <div id="bottomBar" class="inner_window_front" style="height:30px;font-size: 12px;border-style: solid;border-width: 5px;width:95%;position:absolute;bottom:10px;"></div>
           </div>
           <div class="footer">
-            <button id="modLoadReveal" onclick="document.body.style.overflow = 'hidden';if(document.getElementById('modloaddiv').style.display != 'none'){document.getElementById('modloaddiv').style.display = 'none'}else{document.getElementById('modloaddiv').style.display = 'block'}"> Mod Loader </button>
             <br><br><button id="bigshotOn"><span class="rainbowText">[[BIGSHOT]]</span> Mode</button>
             <div id="music_player" style="display:none">
               <button onclick="document.getElementById('campaigntrailmusic').play()">Play Soundtrack</button>
@@ -68,11 +68,8 @@
               <audio id="campaigntrailmusic" loop="true" style="display:none" src="" autoplay="false"></audio>
             </div>
             <br>
-            <br>
-            <div id="modloaddiv" style="display:none">
-              <div id="mod_sel_wrapper"></div>
-            </div>
-            <br>
+            <!-- Hidden modSelect kept for mod_loader.js compatibility -->
+            <select style="display:none" name="mod" id="modSelect"></select>
             <div id="theme_picker">
               <span class="campaign_trail_start_emphasis">
                 <button id="game_start" onclick=creatorChange()>
@@ -84,20 +81,16 @@
             <br>
             <br>
             <a href="http://www.americanhistoryusa.com" style="color:#FF6B6B">Original site</a> created by Dan Bryan &copy; 2012- <testf id="year">2022</testf>
-            <br> To report bugs and view the source code, please visit our <a href="https://github.com/newcampaigntrail/newcampaigntrail.github.io" style="color:#FF6B6B">GitHub</a>
+            <br> To report bugs and view the source code, please visit our <a href="https://github.com/Mrcinemazo9nn/The-New-Campaign-Trail-MP" style="color:#FF6B6B">GitHub</a>
             <br> Join our <a href="https://discord.gg/CfS6yTtjZj" style="color:#FF6B6B">Discord Server here!</a>
             <br>
           </div>
         </div>
         <br>
 
-        <!-- 
-            ### BIGSHOT ###
-        -->
-        
+        <!-- ### BIGSHOT ### -->
         <div id="cheatmode" style="display:none" class="cheat_menu">
           <div id="cheat_content">
-
           <span class="cheat_header">Game Difficulty:</span><br>
           <input onchange="difficultyChanger()" type="range" min="0" max="10000" value="1100" id="difficultySlider" class="difficultySlider" />
           <span id="difficultyMod">Multiplier: 0</span>
@@ -108,18 +101,13 @@
           <button style="display:none" id="imf_loan" onclick="e.shining_data.balance += Math.pow(10, 10)">
             IMF Loan
           </button>
-
           <input type="checkbox" id="effectTooltips" checked />
           <label for="effectTooltips">Effect tooltips?</label>
           <br><br>
           <span class="cheat_header">Skip to question: </span><br>
           <input id="skiptoquestion" type="number" autocomplete="off" placeholder="Numbering starts from 0!"/> 
-          <button id="bigshotSkipBtn">
-            Skip
-          </button> 
-          <button id="bigshot_ender">
-            To Game End
-          </button>
+          <button id="bigshotSkipBtn">Skip</button> 
+          <button id="bigshot_ender">To Game End</button>
           <br><br>
           <input type="checkbox" id="disableRNG" checked />
           <label for="disableRNG">Scenario RNG?</label>
@@ -127,21 +115,15 @@
           <label for="optimalRNG">Optimal RNG?</label>
           <input class="difficultySlider" type="range" id="percentileSlider" min="0.001" max="99.999" step="0.001" value="99.5" disabled />
           <span>Percentile: <span id="percentileValue">99.5</span>%</span>
-                    
-
           <audio id="sfxMeme" style='display:none' src='https://files.gamebanana.com/preview/sounds/kingu_crimsono.mp3'></audio>
-
           </div>
-
           <div id="minimizeBtn">-</div>
         </div>
 
         <div id='dialogue' title='Benefit Check'></div>
   </body>
-  <!-- <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script> -->
   <script src="../static/js/lib/raphael.js"></script>
   <script src="../static/js/christmas.js"></script>
-  
   <script src="../static/js/indexCode.js"></script>
   <script src="../static/js/bigshot.js"></script>
   <script src="../static/js/lib/md5.js"></script>
@@ -149,10 +131,10 @@
   <script src="../static/js/campaign_trail.js"></script>
   <script src="../static/js/campaign_trail_other.js"></script>
   <script src="../static/js/sea_to_sea.js"></script>
+  <script src="../static/js/mod_select.js"></script>
 
-  <!-- Online multiplayer: requires a Firebase config, see MULTIPLAYER_SETUP.md -->
+  <!-- Online multiplayer -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
   <script src="../static/js/multiplayer.js"></script>
 </html>
