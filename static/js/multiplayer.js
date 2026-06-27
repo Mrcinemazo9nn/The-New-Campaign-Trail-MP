@@ -229,18 +229,19 @@
                main screen and choose your election year, candidate, running mate, game mode, and difficulty.</p>
             <p><i>Once your first question loads, a multiplayer setup panel will appear automatically
                so you can invite your opponent.</i></p>
-            <p><button id="mp_back_btn">Back</button>&nbsp;&nbsp;<button id="mp_ready_btn">OK, got it!</button></p>
+            <p><button id="mp_back_btn">Back</button>&nbsp;&nbsp;<button id="mp_ready_btn">Click here to begin!</button></p>
         `);
         // "Back" cancels the host flow entirely.
         $("#mp_back_btn").click(() => {
             MP.pendingHostSetup = false;
             closeModal();
         });
-        // "OK, got it!" just closes this instructions modal — the player
-        // then clicks "Click here to begin!" on the main screen themselves.
-        // Only start watching for the game to load AFTER they dismiss this.
+        // "Click here to begin!" closes this modal, starts the normal game
+        // setup flow, then watches for the first question to load.
         $("#mp_ready_btn").click(() => {
             closeModal();
+            // Small delay so the modal fully closes before the setup UI appears.
+            setTimeout(() => { $("#game_start").click(); }, 80);
             watchForHostSetupComplete();
         });
     }
