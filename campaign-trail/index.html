@@ -20,7 +20,14 @@
     <meta property="og:url" content="index.html" />
     <meta property="og:description" content="Can you win a Presidential election? Step into the shoes of a battery of candidates across real and alternate timelines and find out." />
     <meta property="og:site_name" content="The New Campaign Trail" />
-    <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <!-- jQuery: bundled locally. Path from campaign-trail/ up one level to repo root. -->
+    <script src="../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script>
+      // Fallback: if the local copy didn't load (e.g. path issue), load from unpkg.
+      if (typeof jQuery === "undefined") {
+        document.write('<script src="https://unpkg.com/jquery@1.11.1/dist/jquery.min.js"><\/script>');
+      }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/jquery-ui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/themes/base/jquery-ui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://malsup.github.io/jquery.blockUI.js" type="text/javascript"></script>
@@ -139,7 +146,7 @@
 
         <div id='dialogue' title='Benefit Check'></div>
   </body>
-  <!-- <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script> -->
+  <!-- local jquery already loaded in <head> -->
   <script src="../static/js/lib/raphael.js"></script>
   <script src="../static/js/christmas.js"></script>
   
