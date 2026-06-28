@@ -178,8 +178,7 @@
         card.setAttribute("data-mod-id", mod.id);
 
         var imgHtml = mod.img
-            ? '<img class="mod-card-img" src="' + esc(mod.img) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-              '<div class="mod-card-img-placeholder" style="display:none">\uD83D\uDDF3\uFE0F</div>'
+            ? '<div class="mod-card-img-wrap"><img class="mod-card-img" src="' + esc(mod.img) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"></div>'
             : '<div class="mod-card-img-placeholder">\uD83D\uDDF3\uFE0F</div>';
 
         card.innerHTML =
