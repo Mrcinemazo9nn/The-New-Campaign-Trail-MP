@@ -155,10 +155,14 @@ function loadSync(path) {
 
 let options;
 
+// Build the base URL dynamically from window.location so paths work
+// regardless of where the repo is hosted (root domain vs project subdirectory).
+const _repoBase = window.location.pathname.split('/').slice(0, -2).join('/');
+
 const modsJsonPaths = [
-    "../json/mods.json",
+    _repoBase + "/static/json/mods.json",
     "../static/json/mods.json",
-    "/The-New-Campaign-Trail-MP/static/json/mods.json",
+    "../json/mods.json",
 ];
 
 for (const path of modsJsonPaths) {
