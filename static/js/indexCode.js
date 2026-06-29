@@ -125,7 +125,7 @@ function changeFavicon(src) {
     document.head.appendChild(link);
 }
 
-changeFavicon("/static/34starcircle-2.png")
+changeFavicon("../static/34starcircle-2.png")
 
 
 function loadEntries() {

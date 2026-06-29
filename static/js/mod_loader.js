@@ -155,10 +155,24 @@ function loadSync(path) {
 
 let options;
 
-try {
-    options = loadSync("/static/json/mods.json");
-} catch (error) {
-    console.error('Error:', error);
+const modsJsonPaths = [
+    "../json/mods.json",
+    "../static/json/mods.json",
+    "/The-New-Campaign-Trail-MP/static/json/mods.json",
+];
+
+for (const path of modsJsonPaths) {
+    try {
+        options = loadSync(path);
+        if (options && options.length) break;
+    } catch (error) {
+        // try next path
+    }
+}
+
+if (!options || !options.length) {
+    console.error('[ModLoader] Could not load mods.json from any path.');
+    options = [];
 }
 
 
@@ -204,7 +218,7 @@ for (var i = 0; i < options.length; i++) {
             🔗
             <span class="tooltip_text">Copies a permanent mod link.</span>
         </div>
-        <img src='${opt.image ?? "/static/mod_icons/default_placeholder.png"}' class='widget_image'></img>
+        <img src='${opt.image ?? "../mod_icons/default_placeholder.png"}' class='widget_image'></img>
         <br>
         <h3>${opt.label}</h3>
         <span>Tags: ${opt.tags.join(", ")}</span><br>
@@ -220,7 +234,7 @@ for (var i = 0; i < options.length; i++) {
 
 $("#mod_loader_overlay_block").click(()=>{
     $("#modLoadReveal").click();
-    changeFavicon("/static/34starcircle-2.png");
+    changeFavicon("../images/34starcircle-2.png");
     document.body.style.overflow = '';
 });
 
@@ -296,7 +310,7 @@ let selection_click = () => {
     if (icon) {
         changeFavicon(icon);
     } else {
-        changeFavicon("/static/34starcircle-2.png");
+        changeFavicon("../images/34starcircle-2.png");
     }
 
     widgets.forEach(f => f.classList.remove("selected_widget"));
