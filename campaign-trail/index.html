@@ -71,6 +71,51 @@
             <br>
             <div id="modloaddiv" style="display:none">
               <div id="mod_sel_wrapper"></div>
+              <!-- Full mod loader overlay required by mod_loader.js -->
+              <div id="mod_loader_overlay_block" class="mod_loader_overlay_block"></div>
+              <div id="overlay_scr" class="overlay_scr">
+                <div class="tab-container">
+                  <div class="tab active" id="normalTab">Browse Mods</div>
+                  <div class="tab" id="customTab">Custom Mod</div>
+                </div>
+                <!-- Normal (browse) tab -->
+                <div class="tab-content" id="normalContent">
+                  <div class="dropdown_menu_cont">
+                    <input id="searchInput" type="text" placeholder="Search mods..." style="width:50%;margin-right:1em;">
+                    <select id="sort">
+                      <option value="default">Default Order</option>
+                      <option value="reverse">Reverse Order</option>
+                    </select>
+                    <select id="modSelect" name="mod" onchange="modSelectChange()" style="width:200px;margin-left:1em;"></select>
+                  </div>
+                  <div id="tagContainer"></div>
+                  <div class="overlay_tab">
+                    <div class="overlay_tab_inner" id="widgetsContainer"></div>
+                  </div>
+                </div>
+                <!-- Custom mod tab -->
+                <div class="tab-content" id="customContent">
+                  <div id="customMenu">
+                    <h3>Paste Custom Mod Code</h3>
+                    <p>Paste the three code blocks from your mod below.</p>
+                    <textarea id="codeset1" class="overlay_tab" rows="3" placeholder="Code Block 1 (election/candidate/running mate data)"></textarea>
+                    <textarea id="codeset2" class="overlay_tab" rows="3" placeholder="Code Block 2 (questions/answers/scoring)"></textarea>
+                    <textarea id="codeset3" class="overlay_tab" rows="3" placeholder="Code Block 3 (ending code, optional)"></textarea>
+                    <div>
+                      <input type="file" id="importfile" accept=".txt,.js,.html">
+                      <label for="importfile">Or import a file</label>
+                    </div>
+                    <div id="custom_loader_area">
+                      <input id="custom_loader_input" type="text" placeholder="Saved mod name">
+                      <button id="custom_loader_save">Save</button>
+                      <button id="custom_loader_delete">Delete</button>
+                      <select id="custom_select"></select>
+                    </div>
+                  </div>
+                </div>
+                <button id="submitMod">Submit Mod &amp; Begin</button>
+                <button id="fullscreen_toggle" class="fullscreen_toggle">⛶</button>
+              </div>
             </div>
             <br>
             <div id="theme_picker">
