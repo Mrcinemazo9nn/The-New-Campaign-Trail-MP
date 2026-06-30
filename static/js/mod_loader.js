@@ -4,6 +4,18 @@ const normalTab = document.getElementById('normalTab');
 const customContent = document.getElementById('customContent');
 const normalContent = document.getElementById('normalContent');
 
+// Rewrites an absolute "/static/..." path (as stored in mods.json) into a
+// path that's correct regardless of whether the site is hosted at the
+// domain root or in a GitHub Pages project subdirectory.
+const _repoBaseForImages = window.location.pathname.split('/').slice(0, -2).join('/');
+function fixModAssetPath(path) {
+    if (!path) return path;
+    if (path.startsWith('/static/')) {
+        return _repoBaseForImages + path;
+    }
+    return path;
+}
+
 overlay.style.display = 'block';
 
 const viewNormal = () => {
@@ -222,7 +234,7 @@ for (var i = 0; i < options.length; i++) {
             🔗
             <span class="tooltip_text">Copies a permanent mod link.</span>
         </div>
-        <img src='${opt.image ?? "../mod_icons/default_placeholder.png"}' class='widget_image'></img>
+        <img src='${fixModAssetPath(opt.image) ?? "../mod_icons/default_placeholder.png"}' class='widget_image'></img>
         <br>
         <h3>${opt.label}</h3>
         <span>Tags: ${opt.tags.join(", ")}</span><br>
@@ -312,7 +324,7 @@ let selection_click = () => {
 
     let icon = options.find(f=>f.value === $("#modSelect").val()).image;
     if (icon) {
-        changeFavicon(icon);
+        changeFavicon(fixModAssetPath(icon));
     } else {
         changeFavicon("../images/34starcircle-2.png");
     }
