@@ -19,10 +19,14 @@
     <meta property="og:url" content="index.html" />
     <meta property="og:description" content="Can you win a Presidential election? Step into the shoes of a battery of candidates across real and alternate timelines and find out." />
     <meta property="og:site_name" content="The New Campaign Trail" />
-    <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"></script>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css">
-    <script src="https://malsup.github.io/jquery.blockUI.js" type="text/javascript"></script>
+    <!-- jQuery: bundled locally. Path from campaign-trail/ up one level to repo root. -->
+    <script src="../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script>
+      // Fallback: if the local copy didn't load (e.g. path issue), load from CDN.
+      if (typeof jQuery === "undefined") {
+        document.write('<script src="https://code.jquery.com/jquery-1.11.3.min.js"><\/script>');
+      }
+    </script>
   </head>
   <body class="base">
     <div class="container">
@@ -60,7 +64,7 @@
             <div id="bottomBar" class="inner_window_front" style="height:30px;font-size: 12px;border-style: solid;border-width: 5px;width:95%;position:absolute;bottom:10px;"></div>
           </div>
           <div class="footer">
-            <button id="modLoadReveal" onclick="document.body.style.overflow = 'hidden';if(document.getElementById('modloaddiv').style.display != 'none'){document.getElementById('modloaddiv').style.display = 'none'}else{document.getElementById('modloaddiv').style.display = 'block'}"> Mod Loader </button>
+            
             <br><br><button id="bigshotOn"><span class="rainbowText">[[BIGSHOT]]</span> Mode</button>
             <div id="music_player" style="display:none">
               <button onclick="document.getElementById('campaigntrailmusic').play()">Play Soundtrack</button>
@@ -69,6 +73,9 @@
             </div>
             <br>
             <br>
+            <button id="modLoadReveal" onclick="if(typeof closeModal==='function')closeModal();if(document.getElementById('modloaddiv').style.display != 'none'){document.getElementById('modloaddiv').style.display = 'none'}else{document.getElementById('modloaddiv').style.display = 'block'}">
+              Mod Loader
+            </button><br><br>
             <div id="modloaddiv" style="display:none">
               <div id="mod_sel_wrapper"></div>
             </div>
@@ -84,7 +91,7 @@
             <br>
             <br>
             <a href="http://www.americanhistoryusa.com" style="color:#FF6B6B">Original site</a> created by Dan Bryan &copy; 2012- <testf id="year">2022</testf>
-            <br> To report bugs and view the source code, please visit our <a href="https://github.com/newcampaigntrail/newcampaigntrail.github.io" style="color:#FF6B6B">GitHub</a>
+            <br> To report bugs and view the source code, please visit our <a href="https://github.com/Mrcinemazo9nn/The-New-Campaign-Trail-MP" style="color:#FF6B6B">GitHub</a>
             <br> Join our <a href="https://discord.gg/CfS6yTtjZj" style="color:#FF6B6B">Discord Server here!</a>
             <br>
           </div>
@@ -138,7 +145,7 @@
 
         <div id='dialogue' title='Benefit Check'></div>
   </body>
-  <!-- <script src="../../ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script> -->
+  <!-- local jquery already loaded in <head> -->
   <script src="../static/js/lib/raphael.js"></script>
   <script src="../static/js/christmas.js"></script>
   
@@ -150,7 +157,7 @@
   <script src="../static/js/campaign_trail_other.js"></script>
   <script src="../static/js/sea_to_sea.js"></script>
 
-  <!-- Online multiplayer: requires a Firebase config, see MULTIPLAYER_SETUP.md -->
+<!-- Online multiplayer: requires a Firebase config, see MULTIPLAYER_SETUP.md -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="../static/js/multiplayer.js"></script>
