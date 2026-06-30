@@ -201,20 +201,53 @@ function filterEntries() {
 
     $modSelect.val($modSelect.find('option:first').val());
 
-    Array.from(document.getElementsByClassName("widget")).forEach(f => {
-        let value = f.getAttribute("mod-value");
-        let option = originalOptions.filter(id_clean(`#${value}_select_option`))[0];
-        let tags = option.getAttribute("data-tags");
+    // Filter the visible mod card widgets directly from mod_loader.js's own
+    // `options` data (the authoritative mods.json-derived list), rather than
+    // relying on `originalOptions`/tags on the widget's matching <option>
+    // element — `originalOptions` is also reused (with a different source
+    // element) inside mod_loader.js, and the two can fall out of sync.
+    if (typeof options !== "undefined" && Array.isArray(options)) {
+        const nameFilter = (nct_stuff.name_filter || "").toLowerCase();
+        Array.from(document.getElementsByClassName("widget")).forEach(f => {
+            const value = f.getAttribute("mod-value");
+            const opt = options.find(o => String(o.value) === String(value));
+            if (!opt) {
+                f.style.display = "none";
+                return;
+            }
 
-        tags = tags.split(" ");
-        
-        if (!arrFiltVal.includes(value)) {
-            f.style.display = "none";
-            return;
-        }
+            const name = (opt.label || opt.value || "").toLowerCase();
+            const nameMatches = !nameFilter || name.includes(nameFilter) || String(opt.value).toLowerCase().includes(nameFilter);
 
-        f.style.display = "";
-    })
+            let tagsMatch = true;
+            if (selectedTags.length > 0) {
+                const entryTags = (opt.tags || []).map(t => String(t).toLowerCase());
+                tagsMatch = selectedTags.every(t => entryTags.includes(String(t).toLowerCase()));
+            }
+
+            f.style.display = (nameMatches && tagsMatch) ? "" : "none";
+        });
+    } else {
+        // Fallback to the original behavior if mod_loader.js's `options`
+        // array isn't available for some reason.
+        Array.from(document.getElementsByClassName("widget")).forEach(f => {
+            let value = f.getAttribute("mod-value");
+            let option = originalOptions.filter(id_clean(`#${value}_select_option`))[0];
+            if (!option) {
+                f.style.display = "none";
+                return;
+            }
+            let tags = option.getAttribute("data-tags");
+            tags = tags.split(" ");
+
+            if (!arrFiltVal.includes(value)) {
+                f.style.display = "none";
+                return;
+            }
+
+            f.style.display = "";
+        });
+    }
 }
 
 function containsAllTags(entryTags, selectedTags) {
