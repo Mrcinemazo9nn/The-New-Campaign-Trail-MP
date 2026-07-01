@@ -313,11 +313,17 @@ $("#submitMod").click(function() {
         }
     } else {
         var client = new XMLHttpRequest();
-        client.open('GET', "../static/mods/" + $("#modSelect")[0].value + "_init.html");
+        var modVal = $("#modSelect")[0].value;
+        var modInitUrl = _repoBase + "/static/mods/" + modVal + "_init.html";
+        client.open('GET', modInitUrl);
         client.onreadystatechange = function() {
-            console.log(client.responseText)
-            if (!e.readyToLoadCode1 && client.responseText.length > 0) {
-                evaluate(client.responseText)
+            if (client.readyState !== 4) return;
+            if (client.status !== 200) {
+                console.error('[ModLoader] Failed to load mod init file:', client.status, client.responseURL);
+                return;
+            }
+            if (!e.readyToLoadCode1) {
+                evaluate(client.responseText);
                 e.readyToLoadCode1 = true;
             }
         }
