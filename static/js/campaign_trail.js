@@ -859,7 +859,7 @@ function endingPicker(out, totv, aa, quickstats) {
 }
 
 function modSelectChange() {
-    if ($("#modSelect")[0].value == "other") {
+    if (($("#modSelect")[0] ? $("#modSelect")[0].value : (e.hotload || "other")) == "other") {
         $("#customMenu")[0].style.display = "block"
     } else {
         $("#customMenu")[0].style.display = "none"
@@ -1858,7 +1858,7 @@ function divideElectoralVotesProp(e, t) {
                             oFunc(e);
                         })
                         e.question_number = 0, e.questions_json = campaignTrail_temp.questions_json, e.answers_json = campaignTrail_temp.answers_json, e.states_json = campaignTrail_temp.states_json, e.issues_json = campaignTrail_temp.issues_json, e.state_issue_score_json = campaignTrail_temp.state_issue_score_json, e.candidate_issue_score_json = campaignTrail_temp.candidate_issue_score_json, e.running_mate_issue_score_json = campaignTrail_temp.running_mate_issue_score_json, e.candidate_state_multiplier_json = campaignTrail_temp.candidate_state_multiplier_json, e.answer_score_global_json = campaignTrail_temp.answer_score_global_json, e.answer_score_issue_json = campaignTrail_temp.answer_score_issue_json, e.answer_score_state_json = campaignTrail_temp.answer_score_state_json, e.answer_feedback_json = campaignTrail_temp.answer_feedback_json, e.candidate_image_url = campaignTrail_temp.candidate_image_url, e.running_mate_image_url = campaignTrail_temp.running_mate_image_url, e.candidate_last_name = campaignTrail_temp.candidate_last_name, e.running_mate_last_name = campaignTrail_temp.running_mate_last_name, e.running_mate_state_id = campaignTrail_temp.running_mate_state_id, e.player_answers = campaignTrail_temp.player_answers, e.player_visits = campaignTrail_temp.player_visits, e.answer_feedback_flg = campaignTrail_temp.answer_feedback_flg, e.election_id = Number(e.election_id), e.candidate_id = Number(e.candidate_id), e.running_mate_id = Number(e.running_mate_id), e.difficulty_level_id = Number(e.difficulty_level_id), e.game_start_logging_id = Number(campaignTrail_temp.game_start_logging_id)
-                    } else if ($("#modSelect")[0].value != "other" || e.hotload) {
+                    } else if (($("#modSelect")[0] ? $("#modSelect")[0].value : (e.hotload || "other")) != "other" || e.hotload) {
                         aaa = election_HTML(t, i, a)
                         aaa = "../static/questionset/" + aaa
                         try {
@@ -3534,7 +3534,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
           // global multiplier, exactly the way the host's answers already are.
           const mpOppId = e.mp_opponent_candidate_id;
           const isMpGuestCandidate = mpOppId != null && candidate === mpOppId;
-          if (mpOppId != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1) {
+          if (mpOppId != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1 && !diff_mod) {
             const n2 = e.player_answers_p2.reduce((acc, answer) => {
               const score = e.answer_score_global_json.find(
                 (item) =>
@@ -3619,7 +3619,7 @@ _ = '   <div class="game_header"> ' + corrr + ' </div> <div id="main_content_are
                 for (d = 0; d < e.player_answers.length; d++)
                     for (var j = 0; j < e.answer_score_state_json.length; j++) e.answer_score_state_json[j].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j].fields.answer == e.player_answers[d] && e.answer_score_state_json[j].fields.candidate == e.candidate_id && e.answer_score_state_json[j].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j].fields.state_multiplier);
                 // MULTIPLAYER: same lookup, but for the second human player's answers/candidate
-                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1)
+                if (e.mp_opponent_candidate_id != null && Array.isArray(e.player_answers_p2) && MP_NO_CROSS_ELECTIONS.indexOf(Number(e.election_id)) === -1 && !diff_mod)
                     for (d = 0; d < e.player_answers_p2.length; d++)
                         for (var j2 = 0; j2 < e.answer_score_state_json.length; j2++) e.answer_score_state_json[j2].fields.state == f[a].state_multipliers[r].state && e.answer_score_state_json[j2].fields.answer == e.player_answers_p2[d] && e.answer_score_state_json[j2].fields.candidate == e.mp_opponent_candidate_id && e.answer_score_state_json[j2].fields.affected_candidate == i[a] && (w += e.answer_score_state_json[j2].fields.state_multiplier);
                 if (0 == a) {
