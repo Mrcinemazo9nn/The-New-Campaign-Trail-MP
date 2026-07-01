@@ -275,6 +275,19 @@ $("#customMenu").change(()=>{
 
 $("#submitMod").click(function() {
 
+    // Ensure #modSelect reflects the currently highlighted widget (in case
+    // the filter changed the dropdown but the user never re-clicked Select).
+    const selectedWidget = document.querySelector('.widget.selected_widget');
+    if (selectedWidget) {
+        const widgetVal = selectedWidget.getAttribute('mod-value');
+        if (widgetVal) {
+            if ($("#modSelect option").filter(function(){ return $(this).val() === widgetVal; }).length === 0) {
+                $("#modSelect").empty().append(originalOptions.clone());
+            }
+            $("#modSelect").val(widgetVal);
+        }
+    }
+
     document.body.style.overflow = '';
     if ($("#importfile")[0].value != "") {
         const content = document.querySelector('.content');
