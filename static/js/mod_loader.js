@@ -238,7 +238,7 @@ for (var i = 0; i < options.length; i++) {
         <br>
         <h3>${opt.label}</h3>
         <span>Tags: ${opt.tags.join(", ")}</span><br>
-        <button class="select-button" onclick="$('#modSelect').val('${opt.value}');selection_click()">Select</button>
+        <button class="select-button" onclick="$('#modSelect').empty().append(originalOptions.clone());$('#modSelect').val('${opt.value}');selection_click()">Select</button>
         <button id='${id}' class="favourite-button" onclick="toggle_fav('${opt.value}')">${fav}</button>
     `;
 
