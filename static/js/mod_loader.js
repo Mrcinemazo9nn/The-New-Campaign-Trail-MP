@@ -1,4 +1,5 @@
 const overlay = document.getElementById('overlay_scr');
+let _selectedModValue = null; // tracks the currently selected mod card value
 const customTab = document.getElementById('customTab');
 const normalTab = document.getElementById('normalTab');
 const customContent = document.getElementById('customContent');
@@ -277,15 +278,19 @@ $("#submitMod").click(function() {
 
     // Ensure #modSelect reflects the currently highlighted widget (in case
     // the filter changed the dropdown but the user never re-clicked Select).
-    const selectedWidget = document.querySelector('.widget.selected_widget');
-    if (selectedWidget) {
-        const widgetVal = selectedWidget.getAttribute('mod-value');
-        if (widgetVal) {
-            if ($("#modSelect option").filter(function(){ return $(this).val() === widgetVal; }).length === 0) {
-                $("#modSelect").empty().append(originalOptions.clone());
-            }
-            $("#modSelect").val(widgetVal);
+    // Get the selected widget value, falling back to the first widget if none selected.
+    // Use _selectedModValue as the primary source (always kept in sync by selection_click).
+    // Fall back to selected_widget or first widget if needed.
+    let resolvedVal = _selectedModValue;
+    if (!resolvedVal) {
+        let selectedWidget = document.querySelector('.widget.selected_widget') || document.querySelector('.widget');
+        if (selectedWidget) resolvedVal = (selectedWidget.getAttribute('mod-value') || '').trim();
+    }
+    if (resolvedVal) {
+        if ($("#modSelect option").filter(function(){ return $(this).val() === resolvedVal; }).length === 0) {
+            $("#modSelect").empty().append(originalOptions.clone());
         }
+        $("#modSelect").val(resolvedVal);
     }
 
     document.body.style.overflow = '';
@@ -313,7 +318,11 @@ $("#submitMod").click(function() {
         }
     } else {
         var client = new XMLHttpRequest();
-        var modVal = $("#modSelect")[0].value;
+        var modVal = (_selectedModValue || ($("#modSelect")[0] && $("#modSelect")[0].value) || "").trim();
+        if (!modVal || modVal === "other") {
+            console.warn("[ModLoader] No valid mod selected.");
+            return;
+        }
         var modInitUrl = _repoBase + "/static/mods/" + modVal + "_init.html";
         client.open('GET', modInitUrl);
         client.onreadystatechange = function() {
@@ -338,11 +347,13 @@ $("#submitMod").click(function() {
 $('.tagCheckbox').on('change', ()=>{filterEntries();selection_click()});
 
 let selection_click = (directValue) => {
-    const currentVal = directValue || $("#modSelect").val();
+    const currentVal = directValue || $("#modSelect").val() || _selectedModValue;
     if (!currentVal) return;
 
     const opt = options.find(f => f.value === currentVal);
     if (!opt) return;
+
+    _selectedModValue = currentVal; // always keep this in sync
 
     // Restore full options to #modSelect before setting value (in case filtered out).
     if ($("#modSelect option").filter(function(){ return $(this).val() === currentVal; }).length === 0) {
@@ -366,7 +377,13 @@ let selection_click = (directValue) => {
 
 $("#modSelect").change(() => selection_click());
 
-selection_click();
+// Set initial selection to first mod in the list
+if (options && options.length > 0) {
+    _selectedModValue = options[0].value;
+    selection_click(_selectedModValue);
+} else {
+    selection_click();
+}
 
 const rebuild_custom_loader = () => {
     $("#custom_loader_area").html("");
