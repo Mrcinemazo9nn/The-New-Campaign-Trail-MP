@@ -332,6 +332,10 @@ $("#submitMod").click(function() {
                 return;
             }
             if (!e.readyToLoadCode1) {
+                // Persist the mod value so campaign_trail.js can find it
+                // after the mod loader overlay closes and #modSelect is gone.
+                e.hotload = modVal;
+                campaignTrail_temp.hotload = modVal;
                 evaluate(client.responseText);
                 e.readyToLoadCode1 = true;
             }
