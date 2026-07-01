@@ -238,7 +238,7 @@ for (var i = 0; i < options.length; i++) {
         <br>
         <h3>${opt.label}</h3>
         <span>Tags: ${opt.tags.join(", ")}</span><br>
-        <button class="select-button" onclick="$('#modSelect').empty().append(originalOptions.clone());$('#modSelect').val('${opt.value}');selection_click()">Select</button>
+        <button class="select-button" onclick="selection_click('${opt.value}')">Select</button>
         <button id='${id}' class="favourite-button" onclick="toggle_fav('${opt.value}')">${fav}</button>
     `;
 
@@ -318,11 +318,23 @@ $("#submitMod").click(function() {
 
 $('.tagCheckbox').on('change', ()=>{filterEntries();selection_click()});
 
-let selection_click = () => {
-    let widget = Array.from(document.getElementsByClassName("widget")).find(f=>f.getAttribute("mod-value")===$("#modSelect").val());
+let selection_click = (directValue) => {
+    const currentVal = directValue || $("#modSelect").val();
+    if (!currentVal) return;
+
+    const opt = options.find(f => f.value === currentVal);
+    if (!opt) return;
+
+    // Restore full options to #modSelect before setting value (in case filtered out).
+    if ($("#modSelect option").filter(function(){ return $(this).val() === currentVal; }).length === 0) {
+        $("#modSelect").empty().append(originalOptions.clone());
+    }
+    $("#modSelect").val(currentVal);
+
+    let widget = Array.from(document.getElementsByClassName("widget")).find(f => f.getAttribute("mod-value") === currentVal);
     let widgets = Array.from(document.getElementsByClassName("widget"));
 
-    let icon = options.find(f=>f.value === $("#modSelect").val()).image;
+    let icon = opt.image;
     if (icon) {
         changeFavicon(fixModAssetPath(icon));
     } else {
@@ -330,11 +342,10 @@ let selection_click = () => {
     }
 
     widgets.forEach(f => f.classList.remove("selected_widget"));
-    widget.classList.add("selected_widget");
-
+    if (widget) widget.classList.add("selected_widget");
 }
 
-$("#modSelect").change(selection_click);
+$("#modSelect").change(() => selection_click());
 
 selection_click();
 
