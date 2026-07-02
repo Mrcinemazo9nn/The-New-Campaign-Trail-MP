@@ -364,11 +364,25 @@
     function activeModInitUrl() {
         // diff_mod is set to true in mod_loader.js when a mod is submitted.
         if (typeof diff_mod === "undefined" || !diff_mod) return null;
-        const sel = document.getElementById("modSelect");
-        if (!sel || !sel.value || sel.value === "other") return null;
+
+        // #modSelect is removed from the DOM when the mod loader overlay closes,
+        // so we use _selectedModValue (set by mod_loader.js) or e.hotload as
+        // the persistent source of truth for the active mod value.
+        let modVal = (typeof _selectedModValue !== "undefined" && _selectedModValue)
+            ? _selectedModValue
+            : (campaignTrail_temp.hotload || null);
+
+        // Also check the DOM as a last resort (works if overlay still open).
+        if (!modVal) {
+            const sel = document.getElementById("modSelect");
+            if (sel && sel.value && sel.value !== "other") modVal = sel.value;
+        }
+
+        if (!modVal || modVal === "other") return null;
+
         // Reconstruct the absolute URL the guest will need to load.
         const base = window.location.pathname.replace(/\/[^/]*$/, "/");
-        return window.location.origin + base + "../static/mods/" + sel.value + "_init.html";
+        return window.location.origin + base + "../static/mods/" + modVal + "_init.html";
     }
 
     function createRoomAsHost(guestCandidateId, guestRunningMateId, timeLimitSeconds, overlay) {
