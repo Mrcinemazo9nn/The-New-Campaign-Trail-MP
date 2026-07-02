@@ -253,9 +253,12 @@
                 return;
             }
             const e = campaignTrail_temp;
+            // For mods, running_mate_json is populated inline by the mod's init
+            // file, so it should be available by the time the first question loads.
+            // For base-game scenarios, it's loaded asynchronously at page start.
+            const rmReady = e.running_mate_json && e.running_mate_json.length;
             if (e.candidate_id && e.election_id && e.opponents_list && e.opponents_list.length &&
-                e.question_number === 0 && $("#answer_select_button")[0] &&
-                e.running_mate_json && e.running_mate_json.length) {
+                e.question_number === 0 && $("#answer_select_button")[0] && rmReady) {
                 clearInterval(interval);
                 MP.pendingHostSetup = false;
                 openHostSetupPanel();
@@ -357,6 +360,17 @@
         });
     }
 
+    // Returns the URL of the currently active mod's init file, or null for base-game scenarios.
+    function activeModInitUrl() {
+        // diff_mod is set to true in mod_loader.js when a mod is submitted.
+        if (typeof diff_mod === "undefined" || !diff_mod) return null;
+        const sel = document.getElementById("modSelect");
+        if (!sel || !sel.value || sel.value === "other") return null;
+        // Reconstruct the absolute URL the guest will need to load.
+        const base = window.location.pathname.replace(/\/[^/]*$/, "/");
+        return window.location.origin + base + "../static/mods/" + sel.value + "_init.html";
+    }
+
     function createRoomAsHost(guestCandidateId, guestRunningMateId, timeLimitSeconds, overlay) {
         console.log("[MP] createRoomAsHost called", {guestCandidateId, guestRunningMateId, timeLimitSeconds});
         overlay.find("#mp_room_info").html(`<p><i>Connecting to Firebase...</i></p>`);
@@ -373,17 +387,21 @@
         const difficultyEntry = (e.difficulty_level_json || []).find(d => String(d.pk) === String(e.difficulty_level_id));
         const difficultyMultiplier = difficultyEntry ? difficultyEntry.fields.multiplier : (e.difficulty_level_multiplier || 1);
 
+        const modInitUrl = activeModInitUrl();
+
         const roomId = makeRoomCode();
         const config = {
             electionId: Number(e.election_id),
             hostCandidateId: Number(e.candidate_id),
             hostRunningMateId: Number(e.running_mate_id),
             guestCandidateId: guestCandidateId,
-            guestRunningMateId: guestRunningMateId,
+            guestRunningMateId: (guestRunningMateId > 0) ? guestRunningMateId : firstRunningMateFor(guestCandidateId),
             gameTypeId: String(e.game_type_id),
             difficultyLevelId: Number(e.difficulty_level_id),
             difficultyMultiplier: difficultyMultiplier,
             timeLimitSeconds: timeLimitSeconds,
+            isMod: modInitUrl != null,
+            modInitUrl: modInitUrl || null,
             createdAt: Date.now(),
             guestJoined: false,
         };
@@ -411,7 +429,11 @@
                     // host's final A(1) calculation (which is shared with the
                     // guest as the official result) can score the guest's
                     // answer choices too, not just the host's own.
-                    mergeOpponentScoringTables(config, config.guestCandidateId, config.guestRunningMateId, () => {});
+                    // Skip this for mods — we don't have balance data for them,
+                    // and single-player-style scoring is used for mod elections.
+                    if (!config.isMod) {
+                        mergeOpponentScoringTables(config, config.guestCandidateId, config.guestRunningMateId, () => {});
+                    }
                 }
             });
         }).catch(err => {
@@ -479,12 +501,59 @@
 
     // -----------------------------------------------------------------
     // 5. GUEST SCENARIO LOADING
-    //    Loads the exact same data file the host is using, then
-    //    re-points the local state at the guest's assigned candidate.
+    //    For base-game scenarios, loads the guest candidate's own
+    //    questionset file and re-points the local state.
+    //    For mods, loads the mod's init file first (to get all inline
+    //    candidate/running-mate/opponent data), then loads the guest's
+    //    own questionset file the same way.
     // -----------------------------------------------------------------
     function loadGuestScenario(config) {
-        // Wait until the base JSON (candidate.json, election.json, etc.)
-        // has loaded before we try to look anything up.
+        if (config.isMod && config.modInitUrl) {
+            loadGuestModScenario(config);
+        } else {
+            loadGuestBaseScenario(config);
+        }
+    }
+
+    // MOD PATH: load the mod's _init.html (which inlines all candidate/
+    // running-mate/opponent JSON), then load the guest's questionset.
+    function loadGuestModScenario(config) {
+        const e = campaignTrail_temp;
+        const internals = getInternals();
+
+        if (!internals.election_HTML) {
+            setTimeout(() => loadGuestModScenario(config), 200);
+            return;
+        }
+
+        // Step 1: evaluate the mod's init file to populate all base data.
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", config.modInitUrl, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return;
+            if (xhr.status !== 200) {
+                console.error("[MP] Failed to load mod init:", xhr.status, config.modInitUrl);
+                $("#mp_status_bar").html(`<b style="color:#ffb3b3;">Failed to load mod data. Check your connection.</b>`);
+                return;
+            }
+            try {
+                // The mod init file is plain JS assignments — evaluate it.
+                // eslint-disable-next-line no-eval
+                eval(xhr.responseText);
+                // Mark that a mod is active (mirrors what mod_loader.js does).
+                diff_mod = true;
+            } catch (err) {
+                console.error("[MP] Error evaluating mod init:", err);
+            }
+
+            // Step 2: now that mod data is loaded, load the guest's questionset.
+            _loadGuestQuestionset(config, true /* isMod */);
+        };
+        xhr.send();
+    }
+
+    // BASE-GAME PATH: wait for shared base data, then load guest's questionset.
+    function loadGuestBaseScenario(config) {
         const waitForBaseData = setInterval(() => {
             const e = campaignTrail_temp;
             if (!(e.candidate_json && e.candidate_json.length && e.election_json && e.election_json.length &&
@@ -495,71 +564,63 @@
 
             const internals = getInternals();
             if (!internals.election_HTML) {
-                // MP_internal not ready yet (script ordering) — try again shortly.
-                setTimeout(() => loadGuestScenario(config), 200);
+                setTimeout(() => loadGuestBaseScenario(config), 200);
                 return;
             }
+            _loadGuestQuestionset(config, false /* isMod */);
+        }, 200);
+    }
 
-            // IMPORTANT: load the GUEST's own candidate's questionset file —
-            // NOT the host's. Each candidate's file contains that candidate's
-            // own question text and answer options (written from their
-            // perspective), so the guest must load their own file to see the
-            // correct questions/answers rather than the host's.
-            const guestCandidateId = config.guestCandidateId;
-            // The host chose the guest's running mate during room setup. Fall
-            // back to the first available running mate only if, for some
-            // reason, an older/incompatible room config didn't include one.
-            const guestRunningMateId = config.guestRunningMateId != null
-                ? config.guestRunningMateId
-                : firstRunningMateFor(guestCandidateId);
+    // SHARED: load the guest's own candidate's questionset file.
+    function _loadGuestQuestionset(config, isMod) {
+        const internals = getInternals();
+        const guestCandidateId = config.guestCandidateId;
+        const guestRunningMateId = (config.guestRunningMateId != null && config.guestRunningMateId > 0)
+            ? config.guestRunningMateId
+            : firstRunningMateFor(guestCandidateId);
 
-            const filename = internals.election_HTML(config.electionId, guestCandidateId, guestRunningMateId);
-            const url = "../static/questionset/" + filename;
+        const filename = internals.election_HTML(config.electionId, guestCandidateId, guestRunningMateId);
+        const url = isMod
+            ? "../static/mods/" + filename
+            : "../static/questionset/" + filename;
 
-            $("#game_window").load(url, () => {
-                const e2 = campaignTrail_temp;
+        $("#game_window").load(url, () => {
+            const e2 = campaignTrail_temp;
 
-                // Replicate the base setup that s()'s continue handler normally does.
-                // Note: candidate_last_name, running_mate_last_name,
-                // candidate_image_url, running_mate_image_url,
-                // running_mate_state_id, questions_json, answers_json,
-                // answer_score_global_json, answer_score_state_json, etc.
-                // all came from the file we just loaded and are already
-                // correct for the guest's candidate — no need to re-derive them.
-                e2.question_number = 0;
-                e2.election_id = config.electionId;
-                e2.difficulty_level_id = config.difficultyLevelId;
-                e2.difficulty_level_multiplier = config.difficultyMultiplier;
-                e2.game_type_id = config.gameTypeId;
-                if (!Array.isArray(e2.player_answers)) e2.player_answers = [];
-                if (!Array.isArray(e2.player_visits)) e2.player_visits = [];
+            e2.question_number = 0;
+            e2.election_id = config.electionId;
+            e2.difficulty_level_id = config.difficultyLevelId;
+            e2.difficulty_level_multiplier = config.difficultyMultiplier;
+            e2.game_type_id = config.gameTypeId;
+            if (!Array.isArray(e2.player_answers)) e2.player_answers = [];
+            if (!Array.isArray(e2.player_visits)) e2.player_visits = [];
 
-                // candidate_id / running_mate_id / opponents_list aren't set by
-                // the questionset file itself, so set them explicitly.
-                e2.candidate_id = guestCandidateId;
-                e2.running_mate_id = guestRunningMateId;
-                e2.opponents_list = computeOpponentsList(config.electionId, guestCandidateId);
+            e2.candidate_id = guestCandidateId;
+            e2.running_mate_id = guestRunningMateId;
+            e2.opponents_list = computeOpponentsList(config.electionId, guestCandidateId);
 
-                // Multiplayer bookkeeping
-                e2.mp_opponent_candidate_id = config.hostCandidateId;
-                e2.mp_running_mate_state_id_p2 = runningMateStateIdFor(config.hostCandidateId);
-                e2.mp_guest_difficulty_multiplier = config.difficultyMultiplier;
-                e2.player_answers_p2 = [];
-                e2.player_visits_p2 = [];
+            e2.mp_opponent_candidate_id = config.hostCandidateId;
+            e2.mp_running_mate_state_id_p2 = runningMateStateIdFor(config.hostCandidateId);
+            e2.mp_guest_difficulty_multiplier = config.difficultyMultiplier;
+            e2.player_answers_p2 = [];
+            e2.player_visits_p2 = [];
 
-                initMultiplayerState(config, "guest");
+            initMultiplayerState(config, "guest");
 
-                // Merge in the host's scoring tables (each candidate's file
-                // only fully covers their own answer choices) so cross-candidate
-                // scoring is as complete as possible, then render question 1.
-                const hostRunningMateId = config.hostRunningMateId;
-                mergeOpponentScoringTables(config, config.hostCandidateId, hostRunningMateId, () => {
+            // For mods, always use single-player-style scoring (no cross-effects)
+            // since we have no balance data for mod elections.
+            if (!isMod) {
+                mergeOpponentScoringTables(config, config.hostCandidateId, config.hostRunningMateId, () => {
                     const internals2 = getInternals();
                     internals2.o(internals2.A(2));
                 });
-            });
-        }, 200);
+            } else {
+                const internals2 = getInternals();
+                internals2.o(internals2.A(2));
+            }
+        });
     }
+
 
     // Loads `otherCandidateId`'s questionset file in the background and merges
     // its answer_score_global_json / answer_score_state_json entries into our
@@ -585,25 +646,33 @@
         for (const key in e) snapshot[key] = e[key];
 
         const scratch = $('<div style="display:none;"></div>').appendTo("body");
-        scratch.load(url, () => {
-            const otherASG = campaignTrail_temp.answer_score_global_json || [];
-            const otherASS = campaignTrail_temp.answer_score_state_json || [];
 
-            // Restore our own scenario data...
-            for (const key in snapshot) campaignTrail_temp[key] = snapshot[key];
+        $.ajax({
+            url: url,
+            type: "GET",
+            dataType: "html",
+            success: function(response) {
+                scratch.html(response);
+                const otherASG = campaignTrail_temp.answer_score_global_json || [];
+                const otherASS = campaignTrail_temp.answer_score_state_json || [];
 
-            // ...then merge in the opponent's scoring entries (skipping exact
-            // duplicates so we don't double-count any shared entries).
-            campaignTrail_temp.answer_score_global_json = mergeByKey(myASG, otherASG,
-                item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.affected_candidate}`);
-            campaignTrail_temp.answer_score_state_json = mergeByKey(myASS, otherASS,
-                item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.state}-${item.fields.affected_candidate}`);
+                // Restore our own scenario data...
+                for (const key in snapshot) campaignTrail_temp[key] = snapshot[key];
 
-            scratch.remove();
-            callback();
-        }).fail(() => {
-            scratch.remove();
-            callback();
+                // ...then merge in the opponent's scoring entries (skipping exact
+                // duplicates so we don't double-count any shared entries).
+                campaignTrail_temp.answer_score_global_json = mergeByKey(myASG, otherASG,
+                    item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.affected_candidate}`);
+                campaignTrail_temp.answer_score_state_json = mergeByKey(myASS, otherASS,
+                    item => `${item.fields.candidate}-${item.fields.answer}-${item.fields.state}-${item.fields.affected_candidate}`);
+
+                scratch.remove();
+                callback();
+            },
+            error: function() {
+                scratch.remove();
+                callback();
+            }
         });
     }
 
